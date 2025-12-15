@@ -3,7 +3,7 @@ local pcall, getgenv, next, setmetatable =
 	pcall, getgenv, next, setmetatable
 
 --// Launching check
-if not getgenv().AirHub or getgenv().AirHub.Movement then
+if not getgenv().Waddler or getgenv().Waddler.Movement then
 	return
 end
 
@@ -21,7 +21,7 @@ local ActiveKeys = {}
 local BodyVelocity
 
 --// Environment
-getgenv().AirHub.Movement = {
+getgenv().Waddler.Movement = {
 	Settings = {
 		WalkSpeed = 16,
 		WalkSpeedEnabled = false,
@@ -33,15 +33,15 @@ getgenv().AirHub.Movement = {
 	}
 }
 
-local Environment = getgenv().AirHub.Movement
+local Environment = getgenv().Waddler.Movement
 
 --// Forced FOV Environment
-getgenv().AirHub.FOV = {
+getgenv().Waddler.FOV = {
 	Enabled = false,
 	Value = 70
 }
 
-local FOV = getgenv().AirHub.FOV
+local FOV = getgenv().Waddler.FOV
 
 --// Helpers
 local function GetCharacter()
@@ -178,7 +178,7 @@ function Environment.Functions:Exit()
 	end
 
 	DisableFly()
-	getgenv().AirHub.Movement = nil
+	getgenv().Waddler.Movement = nil
 end
 
 function Environment.Functions:Restart()

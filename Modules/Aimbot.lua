@@ -23,7 +23,8 @@ getgenv().Waddler.Aimbot = {
         ThirdPersonSensitivity = 3,
         TriggerKey = "MouseButton2",
         Toggle = false,
-        LockPart = "Head"
+        LockPart = "Head",
+        StickyAim = false  -- New: Sticky Aim toggle (controlled from UI)
     },
     FOVSettings = {
         Enabled = true,
@@ -69,42 +70,46 @@ local function IsValidTarget(Player)
 end
 
 local function GetClosestPlayer()
-    -- If already locked and target is still valid → keep sticky lock, do nothing
-    if Environment.Locked and IsValidTarget(Environment.Locked) then
+    -- Sticky Aim Logic: If enabled and we have a valid locked target → KEEP IT
+    if Environment.Settings.StickyAim and Environment.Locked and IsValidTarget(Environment.Locked) then
         return
     end
 
-    -- If locked but target invalid → cancel lock
-    if Environment.Locked then
+    -- If current locked target is invalid → cancel lock
+    if Environment.Locked and not IsValidTarget(Environment.Locked) then
         CancelLock()
     end
 
-    -- Only search for new target when not locked
-    RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
-    local BestPlayer = nil
+    -- Only search for a new target if:
+    -- - StickyAim is OFF, OR
+    -- - We have no current valid lock
+    if not Environment.Settings.StickyAim or not Environment.Locked then
+        RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
+        local BestPlayer = nil
 
-    for _, v in next, Players:GetPlayers() do
-        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(Environment.Settings.LockPart) and v.Character:FindFirstChildOfClass("Humanoid") then
-            if Environment.Settings.TeamCheck and v.Team and LocalPlayer.Team and v.Team == LocalPlayer.Team then continue end
-            if Environment.Settings.AliveCheck and v.Character:FindFirstChildOfClass("Humanoid").Health <= 0 then continue end
-            if Environment.Settings.WallCheck then
-                local obscuring = Camera:GetPartsObscuringTarget({v.Character[Environment.Settings.LockPart].Position}, v.Character:GetDescendants())
-                if #obscuring > 0 then continue end
-            end
+        for _, v in next, Players:GetPlayers() do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(Environment.Settings.LockPart) and v.Character:FindFirstChildOfClass("Humanoid") then
+                if Environment.Settings.TeamCheck and v.Team and LocalPlayer.Team and v.Team == LocalPlayer.Team then continue end
+                if Environment.Settings.AliveCheck and v.Character:FindFirstChildOfClass("Humanoid").Health <= 0 then continue end
+                if Environment.Settings.WallCheck then
+                    local obscuring = Camera:GetPartsObscuringTarget({v.Character[Environment.Settings.LockPart].Position}, v.Character:GetDescendants())
+                    if #obscuring > 0 then continue end
+                end
 
-            local Vector, OnScreen = Camera:WorldToViewportPoint(v.Character[Environment.Settings.LockPart].Position)
-            Vector = ConvertVector(Vector)
-            local Distance = (UserInputService:GetMouseLocation() - Vector).Magnitude
+                local Vector, OnScreen = Camera:WorldToViewportPoint(v.Character[Environment.Settings.LockPart].Position)
+                Vector = ConvertVector(Vector)
+                local Distance = (UserInputService:GetMouseLocation() - Vector).Magnitude
 
-            if OnScreen and Distance < RequiredDistance then
-                RequiredDistance = Distance
-                BestPlayer = v
+                if OnScreen and Distance < RequiredDistance then
+                    RequiredDistance = Distance
+                    BestPlayer = v
+                end
             end
         end
-    end
 
-    if BestPlayer then
-        Environment.Locked = BestPlayer
+        if BestPlayer then
+            Environment.Locked = BestPlayer
+        end
     end
 end
 
@@ -129,17 +134,16 @@ local function Load()
             GetClosestPlayer()
 
             if Environment.Locked then
-                -- Re-check validity every frame (in case they die mid-lock)
                 if not IsValidTarget(Environment.Locked) then
                     CancelLock()
                 else
                     if Environment.Settings.ThirdPerson then
                         local Vector = Camera:WorldToViewportPoint(Environment.Locked.Character[Environment.Settings.LockPart].Position)
-                        mousemoverel((Vector.X - UserInputService:GetMouseLocation().X) * Environment.Settings.ThirdPersonSensitivity, 
+                        mousemoverel((Vector.X - UserInputService:GetMouseLocation().X) * Environment.Settings.ThirdPersonSensitivity,
                                      (Vector.Y - UserInputService:GetMouseLocation().Y) * Environment.Settings.ThirdPersonSensitivity)
                     else
                         if Environment.Settings.Sensitivity > 0 then
-                            Animation = TweenService:Create(Camera, TweenInfonew(Environment.Settings.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), 
+                            Animation = TweenService:Create(Camera, TweenInfonew(Environment.Settings.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
                                 {CFrame = CFramenew(Camera.CFrame.Position, Environment.Locked.Character[Environment.Settings.LockPart].Position)})
                             Animation:Play()
                         else
@@ -157,7 +161,7 @@ local function Load()
         if not Typing then
             pcall(function()
                 local trigger = Environment.Settings.TriggerKey
-                local isKey = Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode == Enum.KeyCode[string.upper(trigger)] 
+                local isKey = Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode == Enum.KeyCode[string.upper(trigger)]
                 local isMouse = Input.UserInputType == Enum.UserInputType[trigger]
                 if isKey or isMouse then
                     if Environment.Settings.Toggle then
@@ -225,7 +229,8 @@ function Environment.Functions:ResetSettings()
         ThirdPersonSensitivity = 3,
         TriggerKey = "MouseButton2",
         Toggle = false,
-        LockPart = "Head"
+        LockPart = "Head",
+        StickyAim = false
     }
     Environment.FOVSettings = {
         Enabled = true,

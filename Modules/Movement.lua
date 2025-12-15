@@ -1,11 +1,14 @@
+--// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
+--// Ensure AirHub exists
 getgenv().AirHub = getgenv().AirHub or {}
 
+--// Public Movement State (UI reads this)
 getgenv().AirHub.Movement = {
 	WalkSpeed = 16,
 	FlyEnabled = false,
@@ -15,10 +18,11 @@ getgenv().AirHub.Movement = {
 
 local Movement = getgenv().AirHub.Movement
 
-
+--// Internal State
 local ActiveKeys = {}
-local FlyVelocity = nil
+local BodyVelocity = nil
 local FlyConnection = nil
+local InputBeganConn, InputEndedConn = nil, nil
 
 --// Helpers
 local function GetCharacter()
@@ -51,31 +55,17 @@ local function GetMoveDirection(includeY)
 	return dir.Magnitude > 0 and dir.Unit or Vector3.zero
 end
 
---// Input Tracking
-UserInputService.InputBegan:Connect(function(input, gp)
-	if gp then return end
-	ActiveKeys[input.KeyCode] = true
-
-	if input.KeyCode == FlyKeybind then
-		FlyEnabled = not FlyEnabled
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	ActiveKeys[input.KeyCode] = false
-end)
-
---// Fly Logic
+--// Fly Control
 local function EnableFly()
 	local hrp = GetHRP()
 	local hum = GetHumanoid()
 	if not hrp or not hum then return end
 
-	if not FlyVelocity then
-		FlyVelocity = Instance.new("BodyVelocity")
-		FlyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-		FlyVelocity.Velocity = Vector3.zero
-		FlyVelocity.Parent = hrp
+	if not BodyVelocity then
+		BodyVelocity = Instance.new("BodyVelocity")
+		BodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		BodyVelocity.Velocity = Vector3.zero
+		BodyVelocity.Parent = hrp
 	end
 
 	hum.PlatformStand = true
@@ -85,9 +75,9 @@ local function EnableFly()
 		local moveDir = GetMoveDirection(true)
 
 		if moveDir.Magnitude > 0 then
-			FlyVelocity.Velocity = cam.CFrame:VectorToWorldSpace(moveDir) * FlySpeed
+			BodyVelocity.Velocity = cam.CFrame:VectorToWorldSpace(moveDir) * Movement.FlySpeed
 		else
-			FlyVelocity.Velocity = Vector3.zero
+			BodyVelocity.Velocity = Vector3.zero
 		end
 	end)
 end
@@ -98,9 +88,9 @@ local function DisableFly()
 		FlyConnection = nil
 	end
 
-	if FlyVelocity then
-		FlyVelocity:Destroy()
-		FlyVelocity = nil
+	if BodyVelocity then
+		BodyVelocity:Destroy()
+		BodyVelocity = nil
 	end
 
 	local hum = GetHumanoid()
@@ -109,16 +99,59 @@ local function DisableFly()
 	end
 end
 
---// Update Loop
+--// Input Handling
+InputBeganConn = UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	ActiveKeys[input.KeyCode] = true
+
+	if input.KeyCode == Movement.FlyKeybind then
+		Movement.FlyEnabled = not Movement.FlyEnabled
+	end
+end)
+
+InputEndedConn = UserInputService.InputEnded:Connect(function(input)
+	ActiveKeys[input.KeyCode] = false
+end)
+
+--// Main Update Loop
 RunService.RenderStepped:Connect(function()
 	local hum = GetHumanoid()
 	if hum then
-		hum.WalkSpeed = WalkSpeed
+		hum.WalkSpeed = Movement.WalkSpeed
 	end
 
-	if FlyEnabled and not FlyVelocity then
-		EnableFly()
-	elseif not FlyEnabled and FlyVelocity then
-		DisableFly()
+	if Movement.FlyEnabled then
+		if not BodyVelocity then
+			EnableFly()
+		end
+	else
+		if BodyVelocity then
+			DisableFly()
+		end
 	end
 end)
+
+--// Character Safety
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	DisableFly()
+end)
+
+--// Public Functions (for unload / restart)
+getgenv().AirHub.Movement.Functions = {}
+
+function getgenv().AirHub.Movement.Functions:Exit()
+	DisableFly()
+
+	if InputBeganConn then
+		InputBeganConn:Disconnect()
+		InputBeganConn = nil
+	end
+
+	if InputEndedConn then
+		InputEndedConn:Disconnect()
+		InputEndedConn = nil
+	end
+
+	ActiveKeys = {}
+end

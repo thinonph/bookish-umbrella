@@ -1,13 +1,10 @@
 --// Cache
-
 local pcall, getgenv, next, setmetatable = pcall, getgenv, next, setmetatable
 
 --// Launching checks
-
 if not getgenv().AirHub or getgenv().AirHub.Movement then return end
 
 --// Services
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -16,14 +13,16 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 --// Variables
-
-local ServiceConnections, ActiveKeys, BodyVelocity = {}, {}, nil
+local ServiceConnections = {}
+local ActiveKeys = {}
+local BodyVelocity = nil
 
 --// Environment
-
 getgenv().AirHub.Movement = {
 	Settings = {
 		WalkSpeed = 16,
+		WalkSpeedEnabled = false,
+		WalkSpeedKeybind = Enum.KeyCode.X,
 
 		FlyEnabled = false,
 		FlySpeed = 70,
@@ -33,8 +32,7 @@ getgenv().AirHub.Movement = {
 
 local Environment = getgenv().AirHub.Movement
 
---// Core Functions
-
+--// Helpers
 local function GetCharacter()
 	return LocalPlayer.Character
 end
@@ -65,6 +63,7 @@ local function GetMoveDirection(includeY)
 	return dir.Magnitude > 0 and dir.Unit or Vector3.zero
 end
 
+--// Fly
 local function EnableFly()
 	local hrp = GetHRP()
 	local hum = GetHumanoid()
@@ -92,11 +91,15 @@ local function DisableFly()
 	end
 end
 
+--// Load
 local function Load()
-	ServiceConnections.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
+	ServiceConnections.RenderStepped = RunService.RenderStepped:Connect(function()
 		local hum = GetHumanoid()
+
 		if hum then
-			hum.WalkSpeed = Environment.Settings.WalkSpeed
+			hum.WalkSpeed = Environment.Settings.WalkSpeedEnabled
+				and Environment.Settings.WalkSpeed
+				or 16
 		end
 
 		if Environment.Settings.FlyEnabled then
@@ -107,11 +110,10 @@ local function Load()
 			local hrp = GetHRP()
 			if hrp and BodyVelocity then
 				local moveDir = GetMoveDirection(true)
-				if moveDir.Magnitude > 0 then
-					BodyVelocity.Velocity = Camera.CFrame:VectorToWorldSpace(moveDir) * Environment.Settings.FlySpeed
-				else
-					BodyVelocity.Velocity = Vector3.zero
-				end
+				BodyVelocity.Velocity =
+					moveDir.Magnitude > 0
+					and Camera.CFrame:VectorToWorldSpace(moveDir) * Environment.Settings.FlySpeed
+					or Vector3.zero
 			end
 		else
 			if BodyVelocity then
@@ -120,7 +122,7 @@ local function Load()
 		end
 	end)
 
-	ServiceConnections.InputBeganConnection = UserInputService.InputBegan:Connect(function(Input, gp)
+	ServiceConnections.InputBegan = UserInputService.InputBegan:Connect(function(Input, gp)
 		if gp then return end
 		if Input.UserInputType == Enum.UserInputType.Keyboard then
 			ActiveKeys[Input.KeyCode] = true
@@ -128,56 +130,52 @@ local function Load()
 			if Input.KeyCode == Environment.Settings.FlyKeybind then
 				Environment.Settings.FlyEnabled = not Environment.Settings.FlyEnabled
 			end
+
+			if Input.KeyCode == Environment.Settings.WalkSpeedKeybind then
+				Environment.Settings.WalkSpeedEnabled = not Environment.Settings.WalkSpeedEnabled
+			end
 		end
 	end)
 
-	ServiceConnections.InputEndedConnection = UserInputService.InputEnded:Connect(function(Input)
+	ServiceConnections.InputEnded = UserInputService.InputEnded:Connect(function(Input)
 		if Input.UserInputType == Enum.UserInputType.Keyboard then
 			ActiveKeys[Input.KeyCode] = false
 		end
 	end)
 
-	ServiceConnections.CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function()
+	ServiceConnections.CharacterAdded = LocalPlayer.CharacterAdded:Connect(function()
 		DisableFly()
 	end)
 end
 
 --// Functions
-
 Environment.Functions = {}
 
 function Environment.Functions:Exit()
 	for _, v in next, ServiceConnections do
-		pcall(function()
-			v:Disconnect()
-		end)
+		pcall(function() v:Disconnect() end)
 	end
 
 	DisableFly()
-
-	Environment.Functions = nil
 	getgenv().AirHub.Movement = nil
-
-	Load = nil; GetCharacter = nil; GetHumanoid = nil; GetHRP = nil; GetMoveDirection = nil
 end
 
 function Environment.Functions:Restart()
 	for _, v in next, ServiceConnections do
-		pcall(function()
-			v:Disconnect()
-		end)
+		pcall(function() v:Disconnect() end)
 	end
 
 	DisableFly()
 	ServiceConnections = {}
 	ActiveKeys = {}
-
 	Load()
 end
 
 function Environment.Functions:ResetSettings()
 	Environment.Settings = {
 		WalkSpeed = 16,
+		WalkSpeedEnabled = false,
+		WalkSpeedKeybind = Enum.KeyCode.X,
 
 		FlyEnabled = false,
 		FlySpeed = 70,
@@ -189,6 +187,5 @@ setmetatable(Environment.Functions, {
 	__newindex = warn
 })
 
---// Load
-
+--// Init
 Load()

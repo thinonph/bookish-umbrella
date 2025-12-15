@@ -1,8 +1,11 @@
 --// Cache
-local pcall, getgenv, next, setmetatable = pcall, getgenv, next, setmetatable
+local pcall, getgenv, next, setmetatable =
+	pcall, getgenv, next, setmetatable
 
---// Launching checks
-if not getgenv().AirHub or getgenv().AirHub.Movement then return end
+--// Launching check
+if not getgenv().AirHub or getgenv().AirHub.Movement then
+	return
+end
 
 --// Services
 local Players = game:GetService("Players")
@@ -12,10 +15,10 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---// Variables
+--// Containers
 local ServiceConnections = {}
 local ActiveKeys = {}
-local BodyVelocity = nil
+local BodyVelocity
 
 --// Environment
 getgenv().AirHub.Movement = {
@@ -31,6 +34,14 @@ getgenv().AirHub.Movement = {
 }
 
 local Environment = getgenv().AirHub.Movement
+
+--// Forced FOV Environment
+getgenv().AirHub.FOV = {
+	Enabled = false,
+	Value = 70
+}
+
+local FOV = getgenv().AirHub.FOV
 
 --// Helpers
 local function GetCharacter()
@@ -71,7 +82,7 @@ local function EnableFly()
 
 	if not BodyVelocity then
 		BodyVelocity = Instance.new("BodyVelocity")
-		BodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		BodyVelocity.MaxForce = Vector3.new(1e6, 1e6, 1e6)
 		BodyVelocity.Velocity = Vector3.zero
 		BodyVelocity.Parent = hrp
 	end
@@ -96,12 +107,14 @@ local function Load()
 	ServiceConnections.RenderStepped = RunService.RenderStepped:Connect(function()
 		local hum = GetHumanoid()
 
+		-- WalkSpeed
 		if hum then
 			hum.WalkSpeed = Environment.Settings.WalkSpeedEnabled
 				and Environment.Settings.WalkSpeed
 				or 16
 		end
 
+		-- Fly
 		if Environment.Settings.FlyEnabled then
 			if not BodyVelocity then
 				EnableFly()
@@ -120,20 +133,27 @@ local function Load()
 				DisableFly()
 			end
 		end
+
+		-- Forced FOV
+		if FOV.Enabled and Camera then
+			if Camera.FieldOfView ~= FOV.Value then
+				Camera.FieldOfView = FOV.Value
+			end
+		end
 	end)
 
 	ServiceConnections.InputBegan = UserInputService.InputBegan:Connect(function(Input, gp)
 		if gp then return end
-		if Input.UserInputType == Enum.UserInputType.Keyboard then
-			ActiveKeys[Input.KeyCode] = true
+		if Input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-			if Input.KeyCode == Environment.Settings.FlyKeybind then
-				Environment.Settings.FlyEnabled = not Environment.Settings.FlyEnabled
-			end
+		ActiveKeys[Input.KeyCode] = true
 
-			if Input.KeyCode == Environment.Settings.WalkSpeedKeybind then
-				Environment.Settings.WalkSpeedEnabled = not Environment.Settings.WalkSpeedEnabled
-			end
+		if Input.KeyCode == Environment.Settings.FlyKeybind then
+			Environment.Settings.FlyEnabled = not Environment.Settings.FlyEnabled
+		end
+
+		if Input.KeyCode == Environment.Settings.WalkSpeedKeybind then
+			Environment.Settings.WalkSpeedEnabled = not Environment.Settings.WalkSpeedEnabled
 		end
 	end)
 
@@ -144,6 +164,7 @@ local function Load()
 	end)
 
 	ServiceConnections.CharacterAdded = LocalPlayer.CharacterAdded:Connect(function()
+		task.wait(0.3)
 		DisableFly()
 	end)
 end
@@ -181,38 +202,14 @@ function Environment.Functions:ResetSettings()
 		FlySpeed = 70,
 		FlyKeybind = Enum.KeyCode.Z
 	}
+
+	FOV.Enabled = false
+	FOV.Value = 70
 end
 
 setmetatable(Environment.Functions, {
 	__newindex = warn
 })
-
-
-
---// Forced FOV (Hard Override)
-
-do
-    local RunService = game:GetService("RunService")
-    local Camera = workspace.CurrentCamera
-
-    getgenv().AirHub = getgenv().AirHub or {}
-
-    getgenv().AirHub.FOV = {
-        Enabled = false,
-        Value = 70
-    }
-
-    local FOV = getgenv().AirHub.FOV
-
-    RunService.RenderStepped:Connect(function()
-        if FOV.Enabled and Camera then
-            if Camera.FieldOfView ~= FOV.Value then
-                Camera.FieldOfView = FOV.Value
-            end
-        end
-    end)
-end
-
 
 --// Init
 Load()

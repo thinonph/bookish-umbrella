@@ -1,15 +1,20 @@
---// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
---// State
-local FlyEnabled = false
-local FlySpeed = 70
-local WalkSpeed = 16
-local FlyKeybind = Enum.KeyCode.Z
+getgenv().AirHub = getgenv().AirHub or {}
+
+getgenv().AirHub.Movement = {
+	WalkSpeed = 16,
+	FlyEnabled = false,
+	FlySpeed = 70,
+	FlyKeybind = Enum.KeyCode.Z
+}
+
+local Movement = getgenv().AirHub.Movement
+
 
 local ActiveKeys = {}
 local FlyVelocity = nil

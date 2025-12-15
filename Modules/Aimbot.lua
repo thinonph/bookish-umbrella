@@ -15,7 +15,7 @@ local Camera = workspace.CurrentCamera
 --// Variables
 local RequiredDistance, Typing, Running, ServiceConnections, Animation, OriginalSensitivity = 2000, false, false, {}
 
---// Environment (renamed to Aimbot for UI consistency)
+--// Environment
 getgenv().Waddler.Aimbot = {
     Settings = {
         Enabled = false,
@@ -25,7 +25,7 @@ getgenv().Waddler.Aimbot = {
         Sensitivity = 0,
         ThirdPerson = false,
         ThirdPersonSensitivity = 3,
-        TriggerKey = "MouseButton2",  -- Default: Right click
+        TriggerKey = "MouseButton2", 
         Toggle = false,
         LockPart = "Head",
         StickyAim = false
@@ -45,9 +45,8 @@ getgenv().Waddler.Aimbot = {
     Locked = nil
 }
 
-local Aimbot = getgenv().Waddler.Aimbot  -- Shortcut
+local Aimbot = getgenv().Waddler.Aimbot  
 
---// Helper: Extract clean key name from Enum (e.g., "MouseButton2" or "E")
 local function GetKeyName(EnumValue)
     return string.match(tostring(EnumValue), "Enum%.UserInputType%.(.+)") 
         or string.match(tostring(EnumValue), "Enum%.KeyCode%.(.+)") 
@@ -187,7 +186,7 @@ local function Load()
     end)
 end
 
---// Typing Detection
+
 ServiceConnections.TypingStartedConnection = UserInputService.TextBoxFocused:Connect(function() Typing = true end)
 ServiceConnections.TypingEndedConnection = UserInputService.TextBoxFocusReleased:Connect(function() Typing = false end)
 
@@ -206,7 +205,7 @@ function Aimbot.Functions:Restart()
 end
 
 function Aimbot.Functions:ResetSettings()
-    -- Reset logic...
+   
 end
 
 setmetatable(Aimbot.Functions, {__newindex = warn})

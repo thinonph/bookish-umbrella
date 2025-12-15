@@ -187,5 +187,32 @@ setmetatable(Environment.Functions, {
 	__newindex = warn
 })
 
+
+
+--// Forced FOV (Hard Override)
+
+do
+    local RunService = game:GetService("RunService")
+    local Camera = workspace.CurrentCamera
+
+    getgenv().AirHub = getgenv().AirHub or {}
+
+    getgenv().AirHub.FOV = {
+        Enabled = false,
+        Value = 70
+    }
+
+    local FOV = getgenv().AirHub.FOV
+
+    RunService.RenderStepped:Connect(function()
+        if FOV.Enabled and Camera then
+            if Camera.FieldOfView ~= FOV.Value then
+                Camera.FieldOfView = FOV.Value
+            end
+        end
+    end)
+end
+
+
 --// Init
 Load()
